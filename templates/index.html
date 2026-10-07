@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Employee Salary Estimator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Salary estimator home">
+      <span class="brand-mark" aria-hidden="true">S</span>
+      <span>People<span class="brand-light"> / </span>Analytics</span>
+    </a>
+    <span class="status"><span class="status-dot"></span>{{ 'Model ready' if model_ready else 'Model not trained' }}</span>
+  </header>
+
+  <main class="page-shell">
+    <section class="intro">
+      <p class="eyebrow">WORKFORCE PLANNING <span>·</span> REGRESSION MODEL</p>
+      <h1>Salary <span>estimator</span></h1>
+      <p class="intro-copy">Explore an estimated current salary from employee experience, role, and performance details.</p>
+    </section>
+
+    {% if error %}
+    <div class="notice error" role="alert">{{ error }}</div>
+    {% endif %}
+
+    {% if prediction is not none %}
+    <section class="result" aria-live="polite">
+      <div>
+        <p class="result-label">ESTIMATED CURRENT SALARY</p>
+        <p class="result-value">₹{{ prediction }}</p>
+        <p class="result-note">Salary is shown in INR using the values in the training CSV.</p>
+      </div>
+      <span class="result-mark" aria-hidden="true">₹</span>
+    </section>
+    {% endif %}
+
+    {% if not model_ready %}
+    <div class="notice setup">Open <code>ML models/train_model.ipynb</code> and run all cells to train and save the model.</div>
+    {% endif %}
+
+    <div class="workspace">
+      <section class="form-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="section-kicker">EMPLOYEE PROFILE</p>
+            <h2>Prediction inputs</h2>
+          </div>
+          <span class="field-count">{{ fields|length }} fields</span>
+        </div>
+        {% if model_ready %}
+        <form method="post" action="/">
+          <div class="field-grid">
+            {% for field in fields %}
+            <label class="field">
+              <span>{{ field.label }}</span>
+              {% if field.categorical %}
+              <select name="{{ field.name }}" required>
+                {% for option in field.options %}
+                <option value="{{ option.value }}" {% if values.get(field.name, field.default|string) == option.value|string %}selected{% endif %}>{{ option.label }}</option>
+                {% endfor %}
+              </select>
+              {% else %}
+              <input type="number" name="{{ field.name }}" min="{{ field.min }}" max="{{ field.max }}" step="{{ field.step }}" value="{{ values.get(field.name, field.default) }}" required>
+              {% endif %}
+            </label>
+            {% endfor %}
+          </div>
+          <button class="submit-button" type="submit">Estimate salary <span aria-hidden="true">→</span></button>
+        </form>
+        {% endif %}
+      </section>
+
+      <aside class="model-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="section-kicker">MODEL SNAPSHOT</p>
+            <h2>Validation</h2>
+          </div>
+          <span class="model-icon" aria-hidden="true">RF</span>
+        </div>
+        {% if metrics %}
+        <dl class="metrics">
+          <div><dt>Algorithm</dt><dd>Random Forest</dd></div>
+          <div><dt>Training records</dt><dd>{{ '{:,}'.format(rows_used) }}</dd></div>
+          <div><dt>Test R²</dt><dd>{{ '%.3f'|format(metrics.r2) }}</dd></div>
+          <div><dt>Test MAE</dt><dd>₹{{ display_mae }}</dd></div>
+        </dl>
+        <p class="model-footnote">Held-out test split · 20% of cleaned records · MAE in INR</p>
+        {% else %}
+        <p class="empty-state">Validation metrics will appear here after training.</p>
+        {% endif %}
+      </aside>
+    </div>
+    <footer>Predictions are data-based estimates, not compensation guidance.</footer>
+  </main>
+</body>
+</html>
